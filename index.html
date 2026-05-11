@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Ad-Free Player</title>
+    <style>
+        :root {
+            --bg: #0f0f0f;
+            --text: #ffffff;
+            --accent: #ff0000;
+            --card: #282828;
+        }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        h1 { color: var(--accent); text-align: center; }
+        
+        /* Style du lecteur */
+        .video-container { 
+            position: relative; 
+            padding-bottom: 56.25%; /* Ratio 16:9 */
+            height: 0; 
+            overflow: hidden; 
+            background: #000; 
+            margin-bottom: 20px; 
+            border-radius: 8px;
+            border: 1px solid #333;
+        }
+        .video-container iframe { 
+            position: absolute; 
+            top: 0; left: 0; 
+            width: 100%; height: 100%; 
+            border: none; 
+        }
+
+        .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
+        input { flex: 1; padding: 12px; border-radius: 5px; border: 1px solid #444; background: #1a1a1a; color: white; }
+        button { padding: 10px 20px; background: var(--accent); border: none; color: white; cursor: pointer; border-radius: 5px; font-weight: bold; }
+        
+        .video-list { display: grid; gap: 10px; max-height: 400px; overflow-y: auto; }
+        .video-item { 
+            background: var(--card); 
+            padding: 10px 15px; 
+            border-radius: 8px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .video-item:hover { background: #383838; }
+        .video-info { flex: 1; }
+        .delete-btn { background: transparent; color: #888; border: none; cursor: pointer; margin-left: 10px; }
+        .delete-btn:hover { color: var(--accent); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Ad-Free Player</h1>
+
+    <div class="video-container">
+        <iframe id="mainPlayer" src="" allowfullscreen></iframe>
+    </div>
+    
+    <div class="input-group">
+        <input type="text" id="ytLink" placeholder="Collez un lien YouTube...">
+        <button onclick="addVideo()">Ajouter</button>
+    </div>
+
+    <div id="videoList" class="video-list"></div>
+</div>
+
+<script>
+    let playlist = JSON.parse(localStorage.getItem('myPlaylist')) || [];
+    const player = document.getElementById('mainPlayer');
+    renderPlaylist();
+
+    function addVideo() {
+        const input = document.getElementById('ytLink');
+        let url = input.value.trim();
+        let videoId = "";
+
+        // Extraction de l'ID de la vidéo
+        if (url.includes("v=")) {
+            videoId = url.split("v=")[1].split("&")[0];
+        } else if (url.includes("youtu.be/")) {
+            videoId = url.split("youtu.be/")[1].split("?")[0];
+        }
+
+        if (videoId) {
+            // On crée le lien embed vers yout-ube.com pour le lecteur
+            let embedUrl = `https://www.yout-ube.com/embed/${videoId}`;
+            
+            playlist.push({ id: Date.now(), embed: embedUrl, title: "Vidéo " + (playlist.length + 1) });
+            localStorage.setItem('myPlaylist', JSON.stringify(playlist));
+            
+            input.value = '';
+            renderPlaylist();
+            loadVideo(embedUrl); // Charger la vidéo immédiatement
+        } else {
+            alert("Lien non reconnu.");
+        }
+    }
+
+    function loadVideo(url) {
+        player.src = url;
+    }
+
+    function deleteVideo(e, id) {
+        e.stopPropagation(); // Empêche de lancer la vidéo quand on clique sur supprimer
+        playlist = playlist.filter(v => v.id !== id);
+        localStorage.setItem('myPlaylist', JSON.stringify(playlist));
+        renderPlaylist();
+    }
+
+    function renderPlaylist() {
+        const listContainer = document.getElementById('videoList');
+        listContainer.innerHTML = '';
+
+        playlist.forEach(video => {
+            const item = document.createElement('div');
+            item.className = 'video-item';
+            item.onclick = () => loadVideo(video.embed);
+            item.innerHTML = `
+                <div class="video-info">▶ ${video.title}</div>
+                <button class="delete-btn" onclick="deleteVideo(event, ${video.id})">✖</button>
+            `;
+            listContainer.appendChild(item);
+        });
+    }
+</script>
+
+</body>
+</html>
