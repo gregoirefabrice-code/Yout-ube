@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Pocket Ad-Free</title>
+    <style>
+        :root { --bg: #000000; --card: #1c1c1e; --accent: #ff3b30; --text: #ffffff; }
+        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; }
+        .app { display: flex; flex-direction: column; height: 100vh; max-width: 500px; margin: 0 auto; }
+        
+        /* Header */
+        .header { padding: 20px; background: #121212; border-bottom: 1px solid #333; position: sticky; top: 0; }
+        .status { background: var(--card); padding: 15px; border-radius: 12px; text-align: center; border: 1px solid #333; }
+        #now-playing { color: var(--accent); font-weight: bold; display: block; margin-top: 5px; font-size: 0.9em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        /* Inputs */
+        .inputs { padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+        input, select { background: #2c2c2e; border: none; color: white; padding: 14px; border-radius: 10px; font-size: 16px; width: 100%; box-sizing: border-box; }
+        .btn-add { background: var(--accent); color: white; border: none; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer; }
+
+        /* Folders */
+        .folders { display: flex; overflow-x: auto; padding: 10px 15px; gap: 10px; border-bottom: 1px solid #222; }
+        .chip { background: #2c2c2e; padding: 8px 16px; border-radius: 20px; white-space: nowrap; font-size: 14px; border: 1px solid #333; }
+        .chip.active { background: var(--accent); border-color: var(--accent); }
+
+        /* List */
+        .list { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; padding-bottom: 120px; }
+        .item { background: var(--card); padding: 16px; border-radius: 14px; display: flex; justify-content: space-between; align-items: center; }
+        .info { flex: 1; cursor: pointer; font-size: 15px; font-weight: 500; }
+        .del { color: #555; background: none; border: none; font-size: 18px; padding-left: 10px; }
+
+        /* Iframe Masquée */
+        #player-box { position: fixed; bottom: -200px; left: 0; width: 100%; height: 100px; }
+    </style>
+</head>
+<body>
+
+<div class="app">
+    <div class="header">
+        <div class="status">
+            <span style="font-size: 0.7em; color: #8e8e93;">LECTURE SANS PUB (YOUT-UBE)</span>
+            <span id="now-playing">Aucun morceau</span>
+        </div>
+        <div class="inputs">
+            <input type="text" id="ytLink" placeholder="Coller le lien YouTube...">
+            <div style="display:flex; gap:8px;">
+                <select id="folderSelect" style="flex:1"></select>
+                <button class="btn-add" onclick="addTrack()">AJOUTER</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="folders" id="folder-list"></div>
+
+    <div style="padding: 0 15px 10px; display: flex; gap: 5px;">
+        <input type="text" id="newFolder" placeholder="Nouveau dossier..." style="padding: 8px; font-size: 13px;">
+        <button onclick="addFolder()" style="background:#333; color:white; border:none; border-radius:8px; padding:0 12px;">+</button>
+    </div>
+
+    <div id="track-list" class="list"></div>
+</div>
+
+<div id="player-box">
+    <iframe id="mainPlayer" src="" allow="autoplay"></iframe>
+</div>
+
+<script>
+    let storageKey = 'yout-ube-app-v4';
+    let data = JSON.parse(localStorage.getItem(storageKey)) || { folders: ["Favoris"], tracks: [] };
+    let currentFolder = data.folders[0];
+
+    function save() { localStorage.setItem(storageKey, JSON.stringify(data)); render(); }
+
+    function extractId(url) {
+        // Cette regex capture l'ID vidéo peu importe ce qu'il y a autour
+        const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
+        const match = url.match(regExp);
+        return (match && match[7].length == 11) ? match[7] : false;
+    }
+
+    function addTrack() {
+        const input = document.getElementById('ytLink');
+        const vId = extractId(input.value);
+        
+        if (vId) {
+            data.tracks.push({
+                id: Date.now(),
+                vId: vId,
+                folder: document.getElementById('folderSelect').value,
+                title: "Musique " + (data.tracks.length + 1)
+            });
+            input.value = '';
+            save();
+        } else { alert("Lien invalide"); }
+    }
+
+    function addFolder() {
+        const name = document.getElementById('newFolder').value.trim();
+        if(name && !data.folders.includes(name)) {
+            data.folders.push(name);
+            document.getElementById('newFolder').value = '';
+            save();
+        }
+    }
+
+    function play(vId, title) {
+        // TRANSFORMATION DU LIEN VERS YOUT-UBE.COM
+        const player = document.getElementById('mainPlayer');
+        player.src = `https://www.yout-ube.com/embed/${vId}?autoplay=1`;
+        document.getElementById('now-playing').innerText = title;
+        
+        // Empêche la mise en veille
+        if ('wakeLock' in navigator) navigator.wakeLock.request('screen').catch(()=>{});
+    }
+
+    function deleteTrack(id) {
+        data.tracks = data.tracks.filter(t => t.id !== id);
+        save();
+    }
+
+    function render() {
+        // Dossiers
+        const fList = document.getElementById('folder-list');
+        fList.innerHTML = '';
+        data.folders.forEach(f => {
+            const chip = document.createElement('div');
+            chip.className = `chip ${currentFolder === f ? 'active' : ''}`;
+            chip.innerText = f;
+            chip.onclick = () => { currentFolder = f; render(); };
+            fList.appendChild(chip);
+        });
+
+        // Selecteur
+        document.getElementById('folderSelect').innerHTML = data.folders.map(f => `<option value="${f}">${f}</option>`).join('');
+
+        // Tracks
+        const tList = document.getElementById('track-list');
+        tList.innerHTML = '';
+        data.tracks.filter(t => t.folder === currentFolder).forEach(t => {
+            const item = document.createElement('div');
+            item.className = 'item';
+            item.innerHTML = `
+                <div class="info" onclick="play('${t.vId}', '${t.title}')">🎵 ${t.title}</div>
+                <button class="del" onclick="deleteTrack(${t.id})">✕</button>
+            `;
+            tList.appendChild(item);
+        });
+    }
+
+    render();
+</script>
+
+</body>
+</html>
