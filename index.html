@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Ad-Free Player</title>
+    <style>
+        :root {
+            --bg: #0f0f0f;
+            --text: #ffffff;
+            --accent: #ff0000;
+            --card: #282828;
+        }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 { color: var(--accent); text-align: center; }
+        
+        .input-group { display: flex; gap: 10px; margin-bottom: 30px; }
+        input { flex: 1; padding: 12px; border-radius: 5px; border: 1px solid #444; background: #1a1a1a; color: white; }
+        button { padding: 10px 20px; background: var(--accent); border: none; color: white; cursor: pointer; border-radius: 5px; font-weight: bold; }
+        button:hover { background: #cc0000; }
+
+        .video-list { display: grid; gap: 15px; }
+        .video-item { background: var(--card); padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .video-link { color: #3ea6ff; text-decoration: none; word-break: break-all; margin-right: 10px; }
+        .delete-btn { background: #444; font-size: 12px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Tube Ad-Free Linker</h1>
+    
+    <div class="input-group">
+        <input type="text" id="ytLink" placeholder="Collez votre lien YouTube ici...">
+        <button onclick="addVideo()">Ajouter</button>
+    </div>
+
+    <div id="videoList" class="video-list"></div>
+</div>
+
+<script>
+    // Charger la liste au démarrage
+    let playlist = JSON.parse(localStorage.getItem('myPlaylist')) || [];
+    renderPlaylist();
+
+    function addVideo() {
+        const input = document.getElementById('ytLink');
+        let url = input.value.trim();
+        
+        if (url.includes("youtube.com/watch?v=")) {
+            // Transformation du lien
+            let cleanUrl = url.replace("youtube.com", "yout-ube.com");
+            
+            playlist.push({ id: Date.now(), original: url, modified: cleanUrl });
+            localStorage.setItem('myPlaylist', JSON.stringify(playlist));
+            
+            input.value = '';
+            renderPlaylist();
+        } else {
+            alert("Veuillez entrer un lien YouTube valide (format : youtube.com/watch?v=...)");
+        }
+    }
+
+    function deleteVideo(id) {
+        playlist = playlist.filter(v => v.id !== id);
+        localStorage.setItem('myPlaylist', JSON.stringify(playlist));
+        renderPlaylist();
+    }
+
+    function renderPlaylist() {
+        const listContainer = document.getElementById('videoList');
+        listContainer.innerHTML = '';
+
+        playlist.forEach(video => {
+            listContainer.innerHTML += `
+                <div class="video-item">
+                    <a href="${video.modified}" target="_blank" class="video-link">${video.modified}</a>
+                    <button class="delete-btn" onclick="deleteVideo(${video.id})">Supprimer</button>
+                </div>
+            `;
+        });
+    }
+</script>
+
+</body>
+</html>
